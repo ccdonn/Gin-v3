@@ -1,22 +1,17 @@
 package middleware
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/garyburd/redigo/redis"
 
-	. "../config"
-	constant "../constant"
-	utils "../utils"
+	"../config"
+	"../constant"
+	"../utils"
 	"github.com/gin-gonic/gin"
 )
 
-func DummyMiddleware(c *gin.Context) {
-	fmt.Println("dummy middle")
-	c.Next()
-}
-
+// AccessTokenMiddleware : middleware check token
 func AccessTokenMiddleware(c *gin.Context) {
 	authtoken := c.Request.Header.Get("Authorization")
 
@@ -29,7 +24,7 @@ func AccessTokenMiddleware(c *gin.Context) {
 		return
 	}
 
-	r := GetRedisPool().Get()
+	r := config.GetRedisPool().Get()
 	defer r.Close()
 
 	uid := utils.ExtractAgentID(authtoken)

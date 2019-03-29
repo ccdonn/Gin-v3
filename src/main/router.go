@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	// . "../config"
-	middleware "../middleware"
-	service "../service"
+	"../middleware"
+	"../service"
 
 	"github.com/gin-gonic/gin"
 )
@@ -14,7 +14,6 @@ func routers() {
 
 	/* testing area */
 	api := router.Group("/api")
-	api.Use(middleware.DummyMiddleware)
 	api.Use(middleware.AccessTokenMiddleware)
 	{
 		api.GET("/", func(c *gin.Context) {
