@@ -10,6 +10,7 @@ import (
 	. "../config"
 	. "../domain"
 	. "../request"
+	utils "../utils"
 
 	"github.com/gin-gonic/gin"
 )
@@ -149,7 +150,7 @@ func GetTutorial(c *gin.Context) {
 		c.AbortWithStatusJSON(400, gin.H{"status": "failure"})
 		return
 	}
-	t, err := getTutorial(int32(n), c)
+	t, err := getTutorial(int32(n))
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{
 			"status": "failure",
@@ -168,7 +169,7 @@ var tutorialDBColumn = []string{
 	"id", "title", "titleImg", "content",
 	"create_time", "del", "last_update_user", "last_update_time"}
 
-func getTutorial(id int32, c *gin.Context) (*Tutorial, error) {
+func getTutorial(id int32) (*Tutorial, error) {
 	db := GetDBConn()
 	var (
 		title          string
@@ -210,7 +211,68 @@ func getTutorial(id int32, c *gin.Context) (*Tutorial, error) {
 }
 
 func CreateTutorial(c *gin.Context) {
+	var body Tutorial
+	c.BindJSON(&body)
 
+	if body.Title == "" || body.TitleImg == "" || body.Content == "" {
+		c.AbortWithStatusJSON(400, gin.H{
+			"status":       "failure",
+			"errorCode":    10005000,
+			"errorMessage": "param check fail",
+		})
+		log.Println("param check fail")
+		return
+	}
+
+	uid := utils.ExtractAgentId(c.Request.Header.Get("Authorization"))
+	_, err := FindAccount(uid)
+	if err != nil {
+		c.AbortWithStatusJSON(500, gin.H{
+			"status":       "failure",
+			"errorCode":    10005001,
+			"errorMessage": "user not found",
+		})
+		log.Println(err)
+		return
+	}
+
+	body.LastUpdateUser = uid
+
+	if success := createTutorial(&body, c); success {
+		c.JSON(200, gin.H{
+			"status": "success",
+		})
+	}
+
+	return
+}
+
+func createTutorial(t *Tutorial, c *gin.Context) bool {
+	db := GetDBConn()
+
+	insert, err := db.Prepare("insert into tutorial (" + strings.Join(tutorialDBColumn, ",") + ") " +
+		"values (null,?,?,?,now(),?,?,now()) ")
+	if err != nil {
+		c.AbortWithStatusJSON(500, gin.H{
+			"status":       "failure",
+			"errorCode":    10003000,
+			"errorMessage": "sql error",
+		})
+		log.Println(err)
+		return false
+	}
+
+	if _, err = insert.Exec(t.Title, t.TitleImg, t.Content, 0, t.LastUpdateUser); err != nil {
+		c.AbortWithStatusJSON(500, gin.H{
+			"status":       "failure",
+			"errorCode":    10003000,
+			"errorMessage": "sql error",
+		})
+		log.Println(err)
+		return false
+	}
+
+	return true
 }
 
 func UpdateTutorial(c *gin.Context) {
@@ -220,7 +282,78 @@ func UpdateTutorial(c *gin.Context) {
 		return
 	}
 
-	fmt.Println(n)
+	var body Tutorial
+	c.BindJSON(&body)
+
+	if n == 0 || body.Title == "" || body.TitleImg == "" || body.Content == "" {
+		c.AbortWithStatusJSON(400, gin.H{
+			"status":       "failure",
+			"errorCode":    10005000,
+			"errorMessage": "param check fail",
+		})
+		log.Println("param check fail")
+		return
+	}
+
+	uid := utils.ExtractAgentId(c.Request.Header.Get("Authorization"))
+	_, err = FindAccount(uid)
+	if err != nil {
+		c.AbortWithStatusJSON(500, gin.H{
+			"status":       "failure",
+			"errorCode":    10005001,
+			"errorMessage": "user not found",
+		})
+		log.Println(err)
+		return
+	}
+
+	t, err := getTutorial(int32(n))
+	if err != nil {
+		c.AbortWithStatusJSON(500, gin.H{
+			"status":       "failure",
+			"errorCode":    10003111,
+			"errorMessage": "tutorial not found",
+		})
+		log.Println(err)
+		return
+	}
+
+	t.LastUpdateUser = uid
+	t.Title = body.Title
+	t.TitleImg = body.TitleImg
+	t.Content = body.Content
+
+	if ok, err := updateTutorial(t); ok {
+		c.JSON(200, gin.H{
+			"status": "success",
+		})
+	} else {
+		c.AbortWithStatusJSON(500, gin.H{
+			"status":       "failure",
+			"errorCode":    10003000,
+			"errorMessage": "sql error",
+		})
+		log.Println(err)
+	}
+
+	return
+}
+
+func updateTutorial(t *Tutorial) (bool, error) {
+	db := GetDBConn()
+	update, err := db.Prepare("update tutorial set title=?, titleImg=?, content=?, last_update_user=?, last_update_time=now() where id = ?")
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+
+	_, err = update.Exec(t.Title, t.TitleImg, t.Content, t.LastUpdateUser, t.ID)
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+
+	return true, nil
 }
 
 func DeleteTutorial(c *gin.Context) {
@@ -230,5 +363,57 @@ func DeleteTutorial(c *gin.Context) {
 		return
 	}
 
-	fmt.Println(n)
+	uid := utils.ExtractAgentId(c.Request.Header.Get("Authorization"))
+	_, err = FindAccount(uid)
+	if err != nil {
+		c.AbortWithStatusJSON(500, gin.H{
+			"status":       "failure",
+			"errorCode":    10005001,
+			"errorMessage": "user not found",
+		})
+		log.Println(err)
+		return
+	}
+
+	_, err = getTutorial(int32(n))
+	if err != nil {
+		c.AbortWithStatusJSON(500, gin.H{
+			"status":       "failure",
+			"errorCode":    10003111,
+			"errorMessage": "tutorial not found",
+		})
+		return
+	}
+
+	if ok, err := deleteTutorial(int32(n), uid); ok {
+		c.JSON(200, gin.H{
+			"status": "success",
+		})
+	} else {
+		c.AbortWithStatusJSON(500, gin.H{
+			"status":       "failure",
+			"errorCode":    10003000,
+			"errorMessage": "sql error",
+		})
+		log.Println(err)
+	}
+
+	return
+}
+
+func deleteTutorial(id, agentID int32) (bool, error) {
+	db := GetDBConn()
+	delete, err := db.Prepare("update tutorial set del = 1, last_update_user=?, last_update_time=now() where id = ?")
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+
+	_, err = delete.Exec(agentID, id)
+	if err != nil {
+		log.Println(err)
+		return false, err
+	}
+
+	return true, nil
 }

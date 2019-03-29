@@ -1,6 +1,7 @@
 package service
 
 import (
+	"errors"
 	"strconv"
 	"strings"
 
@@ -9,6 +10,10 @@ import (
 )
 
 func FindAccount(uid int32) (*Account, error) {
+
+	if uid <= 0 {
+		return nil, errors.New("user not found")
+	}
 
 	db := GetDBConn()
 	rows, err := db.Query(

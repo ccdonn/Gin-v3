@@ -45,9 +45,9 @@ func routers() {
 	{
 		tutorial.GET("", service.FindTutorial)
 		tutorial.GET("/:ID", service.GetTutorial)
-		// tutorial.POST("/", service.CreateTutorial)
-		// tutorial.PUT("/:ID", service.UpdateTutorial)
-		// tutorial.DELETE("/:ID", service.DeleteTutorial)
+		tutorial.POST("", service.CreateTutorial)
+		tutorial.PUT("/:ID", service.UpdateTutorial)
+		tutorial.DELETE("/:ID", service.DeleteTutorial)
 	}
 
 }
