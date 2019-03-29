@@ -2,6 +2,7 @@ package domain
 
 import "time"
 
+// Suggestion : type define
 type Suggestion struct {
 	ID              int32  `json:"id"`
 	AgentID         int32  `json:"agentId"`

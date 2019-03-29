@@ -4,16 +4,17 @@ import (
 	"regexp"
 	"strings"
 
-	. "../config"
-	constant "../constant"
-	. "../domain"
-	. "../request"
-	. "../utils"
+	"../config"
+	"../constant"
+	"../domain"
+	"../request"
+	"../utils"
 	"github.com/gin-gonic/gin"
 )
 
+// Login : user login
 func Login(c *gin.Context) {
-	var req LoginRequest
+	var req request.LoginRequest
 	c.Bind(&req)
 
 	if req.Username == "" || req.Password == "" {
@@ -35,7 +36,7 @@ func Login(c *gin.Context) {
 
 	// fmt.Println("user input", req)
 
-	db := GetDBConn()
+	db := config.GetDBConn()
 	rows, err := db.Query(
 		strings.Join([]string{"select ac.agent_id, ac.username, ac.password from agent ag join account ac on ag.id = ac.agent_id",
 			"where ac.username = \"" + req.Username + "\"",
@@ -55,7 +56,7 @@ func Login(c *gin.Context) {
 		agentID  int32
 		username string
 		password string
-		account  Account
+		account  domain.Account
 	)
 
 	rows.Next()
@@ -68,7 +69,7 @@ func Login(c *gin.Context) {
 		return
 	}
 
-	account = Account{
+	account = domain.Account{
 		AgentID:  agentID,
 		Username: username,
 		Password: password,
@@ -76,7 +77,7 @@ func Login(c *gin.Context) {
 
 	// fmt.Printf("%v's password is %v\n", account.Username, account.Password)
 
-	token, err := CreateToken(account.AgentID)
+	token, err := utils.CreateToken(account.AgentID)
 	if err != nil {
 		c.JSON(500, gin.H{
 			"status":       "failure",
@@ -85,9 +86,9 @@ func Login(c *gin.Context) {
 		})
 	}
 
-	if VerifyPassword(req.Password, account.Password) {
+	if utils.VerifyPassword(req.Password, account.Password) {
 
-		rc := GetRedisPool().Get()
+		rc := config.GetRedisPool().Get()
 		// rc.Do("SET", "kk", 0)
 		if _, err := rc.Do("SETEX", account.AgentID, constant.TokenExpireTime, token); err != nil {
 			c.JSON(500, gin.H{

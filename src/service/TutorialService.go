@@ -7,16 +7,17 @@ import (
 	"strings"
 	"time"
 
-	. "../config"
-	. "../domain"
-	. "../request"
-	utils "../utils"
+	"../config"
+	"../domain"
+	"../request"
+	"../utils"
 
 	"github.com/gin-gonic/gin"
 )
 
+// FindTutorial : find tutorials
 func FindTutorial(c *gin.Context) {
-	var req TutorialRequest
+	var req request.TutorialRequest
 	c.Bind(&req)
 	//	fmt.Println(req.Query)
 
@@ -62,7 +63,7 @@ func FindTutorial(c *gin.Context) {
 		lastUpdateTime *time.Time
 	)
 
-	db := GetDBConn()
+	db := config.GetDBConn()
 	rows, err := db.Query(sqlQuery, "%"+string(req.Query)+"%", "%"+string(req.Query)+"%")
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{
@@ -98,7 +99,7 @@ func FindTutorial(c *gin.Context) {
 		return
 	}
 
-	t := make([]*Tutorial, req.PageSize)
+	t := make([]*domain.Tutorial, req.PageSize)
 	tindex := 0
 
 	for rows.Next() {
@@ -113,7 +114,7 @@ func FindTutorial(c *gin.Context) {
 			return
 		}
 
-		t[tindex] = &Tutorial{
+		t[tindex] = &domain.Tutorial{
 			ID:             id,
 			Title:          title,
 			TitleImg:       titleImg,
@@ -144,6 +145,7 @@ func FindTutorial(c *gin.Context) {
 
 }
 
+// GetTutorial : get single tutorial
 func GetTutorial(c *gin.Context) {
 	n, err := strconv.Atoi(c.Param("ID"))
 	if err != nil {
@@ -169,8 +171,8 @@ var tutorialDBColumn = []string{
 	"id", "title", "titleImg", "content",
 	"create_time", "del", "last_update_user", "last_update_time"}
 
-func getTutorial(id int32) (*Tutorial, error) {
-	db := GetDBConn()
+func getTutorial(id int32) (*domain.Tutorial, error) {
+	db := config.GetDBConn()
 	var (
 		title          string
 		titleImg       string
@@ -190,7 +192,7 @@ func getTutorial(id int32) (*Tutorial, error) {
 		return nil, err
 	}
 
-	r := &Tutorial{
+	r := &domain.Tutorial{
 		ID:             id,
 		Title:          title,
 		TitleImg:       titleImg,
@@ -210,8 +212,9 @@ func getTutorial(id int32) (*Tutorial, error) {
 	return r, nil
 }
 
+// CreateTutorial : create a new tutorial
 func CreateTutorial(c *gin.Context) {
-	var body Tutorial
+	var body domain.Tutorial
 	c.BindJSON(&body)
 
 	if body.Title == "" || body.TitleImg == "" || body.Content == "" {
@@ -247,8 +250,8 @@ func CreateTutorial(c *gin.Context) {
 	return
 }
 
-func createTutorial(t *Tutorial, c *gin.Context) bool {
-	db := GetDBConn()
+func createTutorial(t *domain.Tutorial, c *gin.Context) bool {
+	db := config.GetDBConn()
 
 	insert, err := db.Prepare("insert into tutorial (" + strings.Join(tutorialDBColumn, ",") + ") " +
 		"values (null,?,?,?,now(),?,?,now()) ")
@@ -275,6 +278,7 @@ func createTutorial(t *Tutorial, c *gin.Context) bool {
 	return true
 }
 
+// UpdateTutorial : update exist tutorial
 func UpdateTutorial(c *gin.Context) {
 	n, err := strconv.Atoi(c.Param("ID"))
 	if err != nil {
@@ -282,7 +286,7 @@ func UpdateTutorial(c *gin.Context) {
 		return
 	}
 
-	var body Tutorial
+	var body domain.Tutorial
 	c.BindJSON(&body)
 
 	if n == 0 || body.Title == "" || body.TitleImg == "" || body.Content == "" {
@@ -339,8 +343,8 @@ func UpdateTutorial(c *gin.Context) {
 	return
 }
 
-func updateTutorial(t *Tutorial) (bool, error) {
-	db := GetDBConn()
+func updateTutorial(t *domain.Tutorial) (bool, error) {
+	db := config.GetDBConn()
 	update, err := db.Prepare("update tutorial set title=?, titleImg=?, content=?, last_update_user=?, last_update_time=now() where id = ?")
 	if err != nil {
 		log.Println(err)
@@ -356,6 +360,7 @@ func updateTutorial(t *Tutorial) (bool, error) {
 	return true, nil
 }
 
+// DeleteTutorial : delete exist tutorial
 func DeleteTutorial(c *gin.Context) {
 	n, err := strconv.Atoi(c.Param("ID"))
 	if err != nil {
@@ -402,7 +407,7 @@ func DeleteTutorial(c *gin.Context) {
 }
 
 func deleteTutorial(id, agentID int32) (bool, error) {
-	db := GetDBConn()
+	db := config.GetDBConn()
 	delete, err := db.Prepare("update tutorial set del = 1, last_update_user=?, last_update_time=now() where id = ?")
 	if err != nil {
 		log.Println(err)

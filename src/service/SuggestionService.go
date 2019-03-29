@@ -8,16 +8,17 @@ import (
 	"strings"
 	"time"
 
-	. "../config"
-	. "../domain"
-	. "../request"
-	utils "../utils"
+	"../config"
+	"../domain"
+	"../request"
+	"../utils"
 
 	"github.com/gin-gonic/gin"
 )
 
+// FindSuggestion : find suggestions
 func FindSuggestion(c *gin.Context) {
-	var req SuggestionRequest
+	var req request.SuggestionRequest
 	c.Bind(&req)
 
 	sqlSelect := "select id, agent_id, nickname, username, type, content, create_time, reply_content, reply_time, status from suggestion"
@@ -57,7 +58,7 @@ func FindSuggestion(c *gin.Context) {
 	// log.Println("SQL query:", sqlQuery)
 	// log.Println("SQL countquery:", sqlCountQuery)
 
-	db := GetDBConn()
+	db := config.GetDBConn()
 	// rows, err := db.Query("select id, agent_id, nickname, username, type, content, create_time, reply_content, reply_time, status from suggestion where status > 0 order by create_time desc")
 	rows, err := db.Query(sqlQuery)
 	if err != nil {
@@ -101,7 +102,7 @@ func FindSuggestion(c *gin.Context) {
 		status       int32
 	)
 
-	s := make([]*Suggestion, req.PageSize)
+	s := make([]*domain.Suggestion, req.PageSize)
 	sindex := 0
 
 	for rows.Next() {
@@ -114,7 +115,7 @@ func FindSuggestion(c *gin.Context) {
 			return
 		}
 
-		sr := &Suggestion{
+		sr := &domain.Suggestion{
 			ID:           id,
 			AgentID:      agentID,
 			Nickname:     nickname,
@@ -147,6 +148,7 @@ func FindSuggestion(c *gin.Context) {
 	return
 }
 
+// GetSuggestion : get suggestion
 func GetSuggestion(c *gin.Context) {
 	n, err := strconv.Atoi(c.Param("ID"))
 	if err != nil {
@@ -166,12 +168,12 @@ func GetSuggestion(c *gin.Context) {
 	return
 }
 
-func getSuggestion(id int32, c *gin.Context) (*Suggestion, error) {
+func getSuggestion(id int32, c *gin.Context) (*domain.Suggestion, error) {
 	sqlSelect := "select id, agent_id, nickname, username, type, content, create_time, reply_content, reply_time, status from suggestion"
 	sqlCondition := "where 1 = 1 and id = " + strconv.Itoa(int(id)) + " and status > 0"
 
 	sqlQuery := strings.Join([]string{sqlSelect, sqlCondition}, " ")
-	db := GetDBConn()
+	db := config.GetDBConn()
 	row, err := db.Query(sqlQuery)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{
@@ -213,7 +215,7 @@ func getSuggestion(id int32, c *gin.Context) (*Suggestion, error) {
 		return nil, err
 	}
 
-	sr := &Suggestion{
+	sr := &domain.Suggestion{
 		ID:           id,
 		AgentID:      agentID,
 		Nickname:     nickname,
@@ -235,8 +237,9 @@ func getSuggestion(id int32, c *gin.Context) (*Suggestion, error) {
 	return sr, nil
 }
 
+// CreateSuggestion : create a new suggestion
 func CreateSuggestion(c *gin.Context) {
-	var body Suggestion
+	var body domain.Suggestion
 	c.Bind(&body)
 
 	if body.Type == 0 || body.Content == "" {
@@ -255,7 +258,7 @@ func CreateSuggestion(c *gin.Context) {
 		log.Println(err)
 	}
 
-	sr := &Suggestion{
+	sr := &domain.Suggestion{
 		AgentID:  account.AgentID,
 		Username: account.Username,
 		Nickname: account.Nickname,
@@ -269,8 +272,8 @@ func CreateSuggestion(c *gin.Context) {
 	return
 }
 
-func create(s *Suggestion) {
-	db := GetDBConn()
+func create(s *domain.Suggestion) {
+	db := config.GetDBConn()
 
 	insert, err := db.Prepare("insert into suggestion(" + strings.Join(SuggestionDBColumn, ",") + ") " +
 		" values (?,?,?,?,?,?,?,now(),?,?,?,?)")
@@ -287,13 +290,15 @@ func create(s *Suggestion) {
 	return
 }
 
+// SuggestionDBColumn : columns of table Suggestion
 var SuggestionDBColumn = []string{
 	"id", "agent_id", "nickname", "username", "type",
 	"content", "image", "create_time", "device_info", "reply_content",
 	"reply_time", "status"}
 
+// PartialUpdateSuggestion : update reply_content of Suggestion
 func PartialUpdateSuggestion(c *gin.Context) {
-	var body Suggestion
+	var body domain.Suggestion
 
 	n, err := strconv.Atoi(c.Param("ID"))
 	if err != nil {
@@ -332,8 +337,8 @@ func PartialUpdateSuggestion(c *gin.Context) {
 	return
 }
 
-func partialUpdateSuggestion(s *Suggestion) bool {
-	db := GetDBConn()
+func partialUpdateSuggestion(s *domain.Suggestion) bool {
+	db := config.GetDBConn()
 
 	update, err := db.Prepare("update suggestion set reply_content=?, reply_time=now(), status=2 where id = " + strconv.Itoa(int(s.ID)))
 	if err != nil {

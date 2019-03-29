@@ -5,17 +5,18 @@ import (
 	"strconv"
 	"strings"
 
-	. "../config"
-	. "../domain"
+	"../config"
+	"../domain"
 )
 
-func FindAccount(uid int32) (*Account, error) {
+// FindAccount : find accounts
+func FindAccount(uid int32) (*domain.Account, error) {
 
 	if uid <= 0 {
 		return nil, errors.New("user not found")
 	}
 
-	db := GetDBConn()
+	db := config.GetDBConn()
 	rows, err := db.Query(
 		strings.Join([]string{"select ac.agent_id, ac.username, ac.nickname, ac.password from agent ag join account ac on ag.id = ac.agent_id",
 			"where ag.id = " + strconv.Itoa(int(uid)),
@@ -31,7 +32,7 @@ func FindAccount(uid int32) (*Account, error) {
 		username string
 		password string
 		nickname string
-		account  Account
+		account  *domain.Account
 	)
 
 	rows.Next()
@@ -39,11 +40,11 @@ func FindAccount(uid int32) (*Account, error) {
 		return nil, err
 	}
 
-	account = Account{
+	account = &domain.Account{
 		AgentID:  agentID,
 		Username: username,
 		Nickname: nickname,
 		Password: password,
 	}
-	return &account, nil
+	return account, nil
 }
