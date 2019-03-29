@@ -23,6 +23,7 @@ func routers() {
 	api.Use(middleware.AccessTokenMiddleware)
 	{
 		api.GET("/", func(c *gin.Context) {
+			fmt.Printf("param is %s\n", c.Query("q"))
 			c.JSON(200, gin.H{
 				"status": true,
 			})
@@ -38,22 +39,21 @@ func routers() {
 	suggestion := router.Group("/suggestion")
 	suggestion.Use(middleware.AccessTokenMiddleware)
 	{
-		suggestion.GET("/", service.FindSuggestion)
+		suggestion.GET("", service.FindSuggestion)
 		suggestion.GET("/:ID", service.GetSuggestion)
-		suggestion.POST("/", service.CreateSuggestion)
+		suggestion.POST("", service.CreateSuggestion)
 		suggestion.PUT("/:ID", service.PartialUpdateSuggestion)
 		// suggestion.DELETE("/:ID", service.DeleteSuggestion)
 	}
 
-	tutorial := router.Group("/tutorial/:ID")
+	tutorial := router.Group("/tutorial")
+	tutorial.Use(middleware.AccessTokenMiddleware)
 	{
-		tutorial.POST("/", func(c *gin.Context) {
-
-			c.JSON(200, gin.H{
-				"message": "message222",
-				"id":      c.Param("ID"),
-			})
-		})
+		tutorial.GET("", service.FindTutorial)
+		tutorial.GET("/:ID", service.GetTutorial)
+		// tutorial.POST("/", service.CreateTutorial)
+		// tutorial.PUT("/:ID", service.UpdateTutorial)
+		// tutorial.DELETE("/:ID", service.DeleteTutorial)
 	}
 
 	me := router.Group("/me")

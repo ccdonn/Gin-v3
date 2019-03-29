@@ -101,7 +101,7 @@ func FindSuggestion(c *gin.Context) {
 		status       int32
 	)
 
-	s := make([]Suggestion, req.PageSize)
+	s := make([]*Suggestion, req.PageSize)
 	sindex := 0
 
 	for rows.Next() {
@@ -114,7 +114,7 @@ func FindSuggestion(c *gin.Context) {
 			return
 		}
 
-		sr := Suggestion{
+		sr := &Suggestion{
 			ID:           id,
 			AgentID:      agentID,
 			Nickname:     nickname,
@@ -151,9 +151,10 @@ func GetSuggestion(c *gin.Context) {
 	n, err := strconv.Atoi(c.Param("ID"))
 	if err != nil {
 		c.AbortWithStatusJSON(400, gin.H{"status": "failure"})
+		return
 	}
 
-	sr, err := get(int32(n), c)
+	sr, err := getSuggestion(int32(n), c)
 	if err != nil {
 		return
 	}
@@ -165,7 +166,7 @@ func GetSuggestion(c *gin.Context) {
 	return
 }
 
-func get(id int32, c *gin.Context) (*Suggestion, error) {
+func getSuggestion(id int32, c *gin.Context) (*Suggestion, error) {
 	sqlSelect := "select id, agent_id, nickname, username, type, content, create_time, reply_content, reply_time, status from suggestion"
 	sqlCondition := "where 1 = 1 and id = " + strconv.Itoa(int(id)) + " and status > 0"
 
@@ -304,7 +305,7 @@ func PartialUpdateSuggestion(c *gin.Context) {
 		return
 	}
 
-	sr, err := get(int32(n), c)
+	sr, err := getSuggestion(int32(n), c)
 	if err != nil {
 		c.AbortWithStatusJSON(400, gin.H{
 			"status":       "failure",
@@ -326,12 +327,12 @@ func PartialUpdateSuggestion(c *gin.Context) {
 
 	sr.ReplyContent = body.ReplyContent
 
-	update(sr)
+	partialUpdateSuggestion(sr)
 
 	return
 }
 
-func update(s *Suggestion) bool {
+func partialUpdateSuggestion(s *Suggestion) bool {
 	db := GetDBConn()
 
 	update, err := db.Prepare("update suggestion set reply_content=?, reply_time=now(), status=2 where id = " + strconv.Itoa(int(s.ID)))
@@ -350,7 +351,7 @@ func update(s *Suggestion) bool {
 	return true
 }
 
-/* not support */
+/* not support delete operation */
 // func DeleteSuggestion(c *gin.Context) {
 // 	n, err := strconv.Atoi(c.Param("ID"))
 // 	if err != nil {
