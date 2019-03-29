@@ -10,7 +10,7 @@ import (
 	"strconv"
 	"strings"
 
-	constant "../constant"
+	"../constant"
 
 	"github.com/google/uuid"
 )
@@ -22,7 +22,7 @@ func CreateToken(agentID int32) (encryptedToken string, err error) {
 	return EncryptToken(token)
 }
 
-func ExtractAgentId(token string) int32 {
+func ExtractAgentID(token string) int32 {
 	info, err := DecryptToken(token)
 	if err != nil {
 		log.Println(err)

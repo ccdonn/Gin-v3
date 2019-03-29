@@ -227,7 +227,7 @@ func CreateTutorial(c *gin.Context) {
 		return
 	}
 
-	uid := utils.ExtractAgentId(c.Request.Header.Get("Authorization"))
+	uid := utils.ExtractAgentID(c.Request.Header.Get("Authorization"))
 	_, err := FindAccount(uid)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{
@@ -299,7 +299,7 @@ func UpdateTutorial(c *gin.Context) {
 		return
 	}
 
-	uid := utils.ExtractAgentId(c.Request.Header.Get("Authorization"))
+	uid := utils.ExtractAgentID(c.Request.Header.Get("Authorization"))
 	_, err = FindAccount(uid)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{
@@ -368,7 +368,7 @@ func DeleteTutorial(c *gin.Context) {
 		return
 	}
 
-	uid := utils.ExtractAgentId(c.Request.Header.Get("Authorization"))
+	uid := utils.ExtractAgentID(c.Request.Header.Get("Authorization"))
 	_, err = FindAccount(uid)
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{

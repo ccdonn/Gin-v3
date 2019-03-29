@@ -32,7 +32,7 @@ func AccessTokenMiddleware(c *gin.Context) {
 	r := GetRedisPool().Get()
 	defer r.Close()
 
-	uid := utils.ExtractAgentId(authtoken)
+	uid := utils.ExtractAgentID(authtoken)
 	if uid <= 0 {
 		c.AbortWithStatusJSON(400, gin.H{
 			"status":       "failure",

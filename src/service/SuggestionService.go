@@ -251,7 +251,7 @@ func CreateSuggestion(c *gin.Context) {
 		return
 	}
 
-	uid := utils.ExtractAgentId(c.Request.Header.Get("Authorization"))
+	uid := utils.ExtractAgentID(c.Request.Header.Get("Authorization"))
 	account, err := FindAccount(uid)
 
 	if err != nil {
