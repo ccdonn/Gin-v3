@@ -101,6 +101,13 @@ func routers() {
 		push.POST("")
 	}
 
+	/* image routing */
+	image := router.Group("image")
+	{
+		image.GET("/:name", service.GetImage)
+		image.POST("", service.UploadImage)
+	}
+
 	/* external service */
 	wechat := router.Group("/wechat")
 	push.Use(middleware.AccessTokenMiddleware)
@@ -126,4 +133,5 @@ func routers() {
 		channel.GET("/player")
 		channel.GET("/agent")
 	}
+
 }
