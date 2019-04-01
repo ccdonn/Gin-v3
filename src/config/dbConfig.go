@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"log"
 
-	constant "../constant"
+	"../constant"
 	_ "github.com/go-sql-driver/mysql"
 )
 
@@ -16,11 +16,14 @@ func getDbConnection() {
 	if err != nil {
 		log.Panic(err)
 	} else {
-		db.SetMaxIdleConns(0)
+		db.SetMaxIdleConns(5)
+		// db.SetMaxOpenConns(3)
+		db.SetConnMaxLifetime(60)
 	}
 }
 
 func GetDBConn() *sql.DB {
+
 	if db == nil {
 		getDbConnection()
 	}

@@ -64,7 +64,10 @@ func FindTutorial(c *gin.Context) {
 	)
 
 	db := config.GetDBConn()
+
 	rows, err := db.Query(sqlQuery, "%"+string(req.Query)+"%", "%"+string(req.Query)+"%")
+	defer rows.Close()
+
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{
 			"status":       "failure",
@@ -76,6 +79,8 @@ func FindTutorial(c *gin.Context) {
 	}
 
 	counts, err := db.Query(sqlCountQuery, "%"+string(req.Query)+"%", "%"+string(req.Query)+"%")
+	defer counts.Close()
+
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{
 			"status":       "failure",
@@ -173,6 +178,7 @@ var tutorialDBColumn = []string{
 
 func getTutorial(id int32) (*domain.Tutorial, error) {
 	db := config.GetDBConn()
+
 	var (
 		title          string
 		titleImg       string
@@ -345,6 +351,7 @@ func UpdateTutorial(c *gin.Context) {
 
 func updateTutorial(t *domain.Tutorial) (bool, error) {
 	db := config.GetDBConn()
+
 	update, err := db.Prepare("update tutorial set title=?, titleImg=?, content=?, last_update_user=?, last_update_time=now() where id = ?")
 	if err != nil {
 		log.Println(err)
@@ -408,6 +415,7 @@ func DeleteTutorial(c *gin.Context) {
 
 func deleteTutorial(id, agentID int32) (bool, error) {
 	db := config.GetDBConn()
+
 	delete, err := db.Prepare("update tutorial set del = 1, last_update_user=?, last_update_time=now() where id = ?")
 	if err != nil {
 		log.Println(err)

@@ -17,10 +17,12 @@ func FindAccount(uid int32) (*domain.Account, error) {
 	}
 
 	db := config.GetDBConn()
+
 	rows, err := db.Query(
 		strings.Join([]string{"select ac.agent_id, ac.username, ac.nickname, ac.password from agent ag join account ac on ag.id = ac.agent_id",
 			"where ag.id = " + strconv.Itoa(int(uid)),
 			"and ac.is_del = 0 and ag.is_del = 0 and ac.ban = 0 and ag.ban = 0"}, " "))
+	defer rows.Close()
 
 	if err != nil {
 		return nil, err

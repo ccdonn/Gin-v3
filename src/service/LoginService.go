@@ -37,10 +37,13 @@ func Login(c *gin.Context) {
 	// fmt.Println("user input", req)
 
 	db := config.GetDBConn()
+	// defer db.Close()
+
 	rows, err := db.Query(
 		strings.Join([]string{"select ac.agent_id, ac.username, ac.password from agent ag join account ac on ag.id = ac.agent_id",
 			"where ac.username = \"" + req.Username + "\"",
 			"and ac.is_del = 0 and ag.is_del = 0 and ac.ban = 0 and ag.ban = 0"}, " "))
+	defer rows.Close()
 
 	if err != nil {
 		c.JSON(500, gin.H{
@@ -89,16 +92,16 @@ func Login(c *gin.Context) {
 	if utils.VerifyPassword(req.Password, account.Password) {
 
 		rc := config.GetRedisPool().Get()
-		// rc.Do("SET", "kk", 0)
+		defer rc.Close()
+
 		if _, err := rc.Do("SETEX", account.AgentID, constant.TokenExpireTime, token); err != nil {
 			c.JSON(500, gin.H{
 				"status":       "failure",
 				"errorCode":    10001025,
 				"errorMessage": "login fail",
 			})
+			return
 		}
-
-		defer rc.Close()
 
 		c.JSON(200, gin.H{
 			"status": "success",

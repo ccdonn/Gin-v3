@@ -61,6 +61,8 @@ func FindSuggestion(c *gin.Context) {
 	db := config.GetDBConn()
 	// rows, err := db.Query("select id, agent_id, nickname, username, type, content, create_time, reply_content, reply_time, status from suggestion where status > 0 order by create_time desc")
 	rows, err := db.Query(sqlQuery)
+	defer rows.Close()
+
 	if err != nil {
 		c.JSON(500, gin.H{
 			"error":   "sql error",
@@ -70,6 +72,8 @@ func FindSuggestion(c *gin.Context) {
 	}
 
 	counts, err := db.Query(sqlCountQuery)
+	defer counts.Close()
+
 	if err != nil {
 		c.JSON(500, gin.H{
 			"error":   "sql error",
@@ -175,6 +179,8 @@ func getSuggestion(id int32, c *gin.Context) (*domain.Suggestion, error) {
 	sqlQuery := strings.Join([]string{sqlSelect, sqlCondition}, " ")
 	db := config.GetDBConn()
 	row, err := db.Query(sqlQuery)
+	defer row.Close()
+
 	if err != nil {
 		c.AbortWithStatusJSON(500, gin.H{
 			"status":       "failure",
