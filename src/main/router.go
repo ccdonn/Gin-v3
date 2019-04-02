@@ -46,11 +46,15 @@ func routers() {
 	tutorial := router.Group("/tutorial")
 	tutorial.Use(middleware.AccessTokenMiddleware)
 	{
+
+		tutorial.GET("/search", service.SearchTutorial)
+
 		tutorial.GET("", service.FindTutorial)
-		tutorial.GET("/:ID", service.GetTutorial)
+		// tutorial.GET("/:ID", service.GetTutorial)
 		tutorial.POST("", service.CreateTutorial)
 		tutorial.PUT("/:ID", service.UpdateTutorial)
 		tutorial.DELETE("/:ID", service.DeleteTutorial)
+
 	}
 
 	/* brand routing */

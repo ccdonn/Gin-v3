@@ -1,6 +1,8 @@
 package service
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"strconv"
@@ -13,6 +15,7 @@ import (
 	"../utils"
 
 	"github.com/gin-gonic/gin"
+	"github.com/olivere/elastic"
 )
 
 // FindTutorial : find tutorials
@@ -429,4 +432,105 @@ func deleteTutorial(id, agentID int32) (bool, error) {
 	}
 
 	return true, nil
+}
+
+// SearchTutorial : search tutorials in elasticsearch
+func SearchTutorial(c *gin.Context) {
+
+	client, err := elastic.NewClient(elastic.SetURL("http://192.168.1.72:9200"))
+	if err != nil {
+		log.Println(err)
+		c.AbortWithStatusJSON(500, gin.H{
+			"status":       "failure",
+			"errorCode":    10009000,
+			"errorMessage": "connection fail",
+		})
+		return
+	}
+	log.Println(client)
+
+	exists, err := client.IndexExists("tutorial").Do(context.Background())
+	if err != nil {
+		log.Println(err)
+		c.AbortWithStatusJSON(500, gin.H{
+			"status":       "failure",
+			"errorCode":    10009001,
+			"errorMessage": "execution fail",
+		})
+		return
+	}
+	if !exists {
+		log.Println("index not exist")
+		c.AbortWithStatusJSON(500, gin.H{
+			"status":       "failure",
+			"errorCode":    10009002,
+			"errorMessage": "index not exist",
+		})
+		return
+	}
+
+	log.Println(exists)
+
+	// get1, err := client.Get().Index("tutorial").Type("tutorial").Id("126").Do(context.Background())
+	// if err != nil {
+	// 	switch {
+	// 	case elastic.IsNotFound(err):
+	// 		panic(fmt.Sprintf("Document not found: %v", err))
+	// 	case elastic.IsTimeout(err):
+	// 		panic(fmt.Sprintf("Timeout retrieving document: %v", err))
+	// 	case elastic.IsConnErr(err):
+	// 		panic(fmt.Sprintf("Connection problem: %v", err))
+	// 	default:
+	// 		// Some other kind of error
+	// 		panic(err)
+	// 	}
+	// }
+
+	// var tes domain.TutorialES
+	// json.Unmarshal(*get1.Source, &tes)
+
+	log.Println("search part")
+
+	matchPhaseQuery := elastic.NewMatchPhraseQuery("title", "教程")
+	// termQuery := elastic.NewTermQuery("title", "教程")
+	searchResult, err := client.Search().
+		Index("tutorial").
+		Query(matchPhaseQuery).
+		Sort("createTime", false).
+		From(0).
+		Size(10).
+		Do(context.Background())
+	if err != nil {
+		// Handle error
+		log.Println(err)
+		// panic(err)
+	}
+
+	// var ttyp domain.TutorialES
+	// for _, item := range searchResult.Each(reflect.TypeOf(ttyp)) {
+	// 	tes := item.(domain.TutorialES)
+	// }
+
+	tutorialSlice := make([]domain.Tutorial, len(searchResult.Hits.Hits))
+	index := 0
+	if searchResult.Hits.TotalHits > 0 {
+		var esr *domain.TutorialES
+		for _, hit := range searchResult.Hits.Hits {
+			err := json.Unmarshal(*hit.Source, &esr)
+			if err != nil {
+				// error
+				log.Println(err)
+			}
+			tutorialSlice[index] = esr.ToTutorial()
+			index++
+		}
+	}
+
+	c.JSON(200, gin.H{
+		"status": "success",
+		"result": tutorialSlice,
+		"total":  searchResult.Hits.TotalHits,
+		"size":   index,
+	})
+	return
 }

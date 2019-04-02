@@ -14,6 +14,8 @@ type Tutorial struct {
 
 	// TopAndOrder    int
 
-	createTime     *time.Time
-	lastUpdateTime *time.Time
+	createTime           *time.Time
+	lastUpdateTime       *time.Time
+	createTimeString     string
+	lastUpdateTimeString string
 }
