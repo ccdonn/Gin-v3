@@ -63,4 +63,11 @@ var (
 	ErrTokenGen = new(1047, "token gen tail")
 	// ErrLogin :
 	ErrLogin = new(5001, "login fail")
+
+	// ErrWechatBrandCreateFail :
+	ErrWechatBrandCreateFail = new(5002, "create fail")
+	// ErrWechatBrandUpdateFail :
+	ErrWechatBrandUpdateFail = new(5003, "update fail")
+	// ErrWechatBrandDeleteFail :
+	ErrWechatBrandDeleteFail = new(5004, "delete fail")
 )

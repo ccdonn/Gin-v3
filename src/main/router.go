@@ -121,11 +121,12 @@ func routers() {
 
 		// sub-group
 		wechatBrand := wechat.Group("/brand")
+		wechatBrand.Use(middleware.AccessTokenMiddleware)
 		{
-			wechatBrand.GET("")
-			wechatBrand.POST("")
-			wechatBrand.PUT("/:ID")
-			wechatBrand.DELETE("/:ID")
+			wechatBrand.GET("", service.GetWechatBrand)
+			wechatBrand.POST("", service.CreateWechatBrand)
+			wechatBrand.PUT("/:ID", service.UpdateWechatBrand)
+			wechatBrand.DELETE("/:ID", service.DeleteWechatBrand)
 		}
 	}
 
