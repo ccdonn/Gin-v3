@@ -2,7 +2,7 @@
 ## Target
 - [X] API method query, body, param
 - [X] API response
-- [ ] Error define
+- [X] Error define
 - [X] Token
 - [X] Middleware
 - [X] MySQL
