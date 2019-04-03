@@ -276,7 +276,7 @@ func create(s *domain.Suggestion) (bool, error) {
 	}
 
 	// location, err := time.LoadLocation("Asia/Taipei")
-	_, err = insert.Exec(nil, s.AgentID, s.Nickname, s.Username, s.Type, s.Content, "", "", "", nil, 1)
+	_, err = insert.Exec(nil, s.AgentID, s.Nickname, s.Username, s.Type, s.Content, "", "[]", "", nil, 1)
 	if err != nil {
 		log.Println(err)
 		return false, err
