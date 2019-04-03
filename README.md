@@ -14,3 +14,4 @@
 - [X] Upload image(multipart)
 - [ ] Async API
 - [ ] Websocket
+- [ ] External API
