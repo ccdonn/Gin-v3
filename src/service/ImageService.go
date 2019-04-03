@@ -3,8 +3,12 @@ package service
 import (
 	"fmt"
 	"io/ioutil"
+	"log"
+	"os"
 	"strconv"
 
+	"../constant"
+	ApiErr "../error"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -12,8 +16,15 @@ import (
 // GetImage : get image from file
 func GetImage(c *gin.Context) {
 	name := c.Param("name")
+
 	// add more checker for security issue
-	c.File(name)
+	if _, err := os.Stat(constant.ImagePath + name); err != nil {
+		log.Println(err)
+		c.AbortWithStatusJSON(400, ApiErr.ErrNotFound)
+		return
+	}
+
+	c.File(constant.ImagePath + name)
 	return
 }
 
@@ -24,11 +35,7 @@ func UploadImage(c *gin.Context) {
 
 	uuid, err := uuid.NewUUID()
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10008000,
-			"errorMessage": "uuid generate fail",
-		})
+		c.AbortWithStatusJSON(500, ApiErr.ErrUUIDGen)
 		return
 	}
 
@@ -37,39 +44,28 @@ func UploadImage(c *gin.Context) {
 
 	file, err := files[0].Open()
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10008001,
-			"errorMessage": "file upload fail",
-		})
+		c.AbortWithStatusJSON(500, ApiErr.ErrFileOpen)
 		return
 	}
 
 	data := make([]byte, files[0].Size)
 	count, err := file.Read(data)
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10008002,
-			"errorMessage": "file upload fail",
-		})
+		c.AbortWithStatusJSON(500, ApiErr.ErrFileRead)
 		return
 	}
 
 	if count <= 0 {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10008003,
-			"errorMessage": "file upload fail(file size?)",
-		})
+		c.AbortWithStatusJSON(500, ApiErr.ErrFileSize)
 		return
 	}
 
 	// check folder before write file
 
-	err = ioutil.WriteFile("../../images/"+uuid.String()+".jpg", data, 0644)
+	err = ioutil.WriteFile(constant.ImagePath+uuid.String()+".jpg", data, 0644)
 	if err != nil {
-		panic(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrFileWrite)
+		return
 	}
 
 	c.JSON(200, gin.H{

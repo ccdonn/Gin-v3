@@ -10,6 +10,7 @@ import (
 
 	"../config"
 	"../domain"
+	ApiErr "../error"
 	"../request"
 	"../utils"
 
@@ -64,10 +65,8 @@ func FindSuggestion(c *gin.Context) {
 	defer rows.Close()
 
 	if err != nil {
-		c.JSON(500, gin.H{
-			"error":   "sql error",
-			"message": err,
-		})
+		log.Println(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrSQLExec)
 		return
 	}
 
@@ -75,10 +74,8 @@ func FindSuggestion(c *gin.Context) {
 	defer counts.Close()
 
 	if err != nil {
-		c.JSON(500, gin.H{
-			"error":   "sql error",
-			"message": err,
-		})
+		log.Println(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrSQLExec)
 		return
 	}
 
@@ -86,10 +83,8 @@ func FindSuggestion(c *gin.Context) {
 	counts.Next()
 	err = counts.Scan(&total)
 	if err != nil {
-		c.JSON(500, gin.H{
-			"error":   "scan error",
-			"message": err,
-		})
+		log.Println(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrSQLScan)
 		return
 	}
 
@@ -112,10 +107,8 @@ func FindSuggestion(c *gin.Context) {
 	for rows.Next() {
 		err = rows.Scan(&id, &agentID, &nickname, &username, &Type, &content, &createTime, &replyContent, &replyTime, &status)
 		if err != nil {
-			c.JSON(500, gin.H{
-				"error":   "scan error",
-				"message": err,
-			})
+			log.Println(err)
+			c.AbortWithStatusJSON(500, ApiErr.ErrSQLScan)
 			return
 		}
 
@@ -156,12 +149,15 @@ func FindSuggestion(c *gin.Context) {
 func GetSuggestion(c *gin.Context) {
 	n, err := strconv.Atoi(c.Param("ID"))
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"status": "failure"})
+		log.Println(err)
+		c.AbortWithStatusJSON(400, ApiErr.ErrRequestParam)
 		return
 	}
 
 	sr, err := getSuggestion(int32(n), c)
 	if err != nil {
+		log.Println(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrNotFound)
 		return
 	}
 
@@ -182,12 +178,8 @@ func getSuggestion(id int32, c *gin.Context) (*domain.Suggestion, error) {
 	defer row.Close()
 
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10003000,
-			"errorMessage": "sql error",
-		})
 		log.Println(err)
+		c.AbortWithStatusJSON(400, ApiErr.ErrSQLExec)
 		return nil, err
 	}
 
@@ -212,12 +204,8 @@ func getSuggestion(id int32, c *gin.Context) (*domain.Suggestion, error) {
 
 	err = row.Scan(&id, &agentID, &nickname, &username, &Type, &content, &createTime, &replyContent, &replyTime, &status)
 	if err != nil {
-		c.JSON(500, gin.H{
-			"status":       "failure",
-			"errorMessage": "scan error",
-			"errorCode":    10003001,
-		})
 		log.Println(err)
+		c.AbortWithStatusJSON(400, ApiErr.ErrSQLScan)
 		return nil, err
 	}
 
@@ -249,11 +237,8 @@ func CreateSuggestion(c *gin.Context) {
 	c.Bind(&body)
 
 	if body.Type == 0 || body.Content == "" {
-		c.AbortWithStatusJSON(400, gin.H{
-			"status":       "failure",
-			"errorCode":    10005000,
-			"errorMessage": "param check fail",
-		})
+		// log.Println(err)
+		c.AbortWithStatusJSON(400, ApiErr.ErrRequestParam)
 		return
 	}
 
@@ -262,6 +247,8 @@ func CreateSuggestion(c *gin.Context) {
 
 	if err != nil {
 		log.Println(err)
+		c.AbortWithStatusJSON(400, ApiErr.ErrNotFound)
+		return
 	}
 
 	sr := &domain.Suggestion{
@@ -278,22 +265,24 @@ func CreateSuggestion(c *gin.Context) {
 	return
 }
 
-func create(s *domain.Suggestion) {
+func create(s *domain.Suggestion) (bool, error) {
 	db := config.GetDBConn()
 
 	insert, err := db.Prepare("insert into suggestion(" + strings.Join(SuggestionDBColumn, ",") + ") " +
 		" values (?,?,?,?,?,?,?,now(),?,?,?,?)")
 	if err != nil {
 		log.Println(err)
+		return false, err
 	}
 
 	// location, err := time.LoadLocation("Asia/Taipei")
 	_, err = insert.Exec(nil, s.AgentID, s.Nickname, s.Username, s.Type, s.Content, "", "", "", nil, 1)
 	if err != nil {
 		log.Println(err)
+		return false, err
 	}
 
-	return
+	return true, nil
 }
 
 // SuggestionDBColumn : columns of table Suggestion
@@ -308,31 +297,19 @@ func PartialUpdateSuggestion(c *gin.Context) {
 
 	n, err := strconv.Atoi(c.Param("ID"))
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{
-			"status":       "failure",
-			"errorCode":    10005000,
-			"errorMessage": "param check fail",
-		})
-		return
-	}
-
-	sr, err := getSuggestion(int32(n), c)
-	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{
-			"status":       "failure",
-			"errorCode":    10002001,
-			"errorMessage": "suggestion not found",
-		})
+		c.AbortWithStatusJSON(400, ApiErr.ErrRequestParam)
 		return
 	}
 
 	c.Bind(&body)
 	if body.ReplyContent == "" {
-		c.AbortWithStatusJSON(400, gin.H{
-			"status":       "failure",
-			"errorCode":    10005000,
-			"errorMessage": "param check fail",
-		})
+		c.AbortWithStatusJSON(400, ApiErr.ErrRequestParam)
+		return
+	}
+
+	sr, err := getSuggestion(int32(n), c)
+	if err != nil {
+		c.AbortWithStatusJSON(400, ApiErr.ErrNotFound)
 		return
 	}
 
@@ -343,30 +320,31 @@ func PartialUpdateSuggestion(c *gin.Context) {
 	return
 }
 
-func partialUpdateSuggestion(s *domain.Suggestion) bool {
+func partialUpdateSuggestion(s *domain.Suggestion) (bool, error) {
 	db := config.GetDBConn()
 
 	update, err := db.Prepare("update suggestion set reply_content=?, reply_time=now(), status=2 where id = " + strconv.Itoa(int(s.ID)))
 	if err != nil {
 		log.Println(err)
-		return false
+		return false, err
 	}
 
 	// location, err := time.LoadLocation("Asia/Taipei")
 	_, err = update.Exec(s.ReplyContent)
 	if err != nil {
 		log.Println(err)
-		return false
+		return false, err
 	}
 
-	return true
+	return true, nil
 }
 
 /* not support delete operation */
 // func DeleteSuggestion(c *gin.Context) {
 // 	n, err := strconv.Atoi(c.Param("ID"))
 // 	if err != nil {
-// 		c.AbortWithStatusJSON(400, gin.H{"status": "failure"})
+// log.Println(err)
+// 		c.AbortWithStatusJSON(400, ApiErr.ErrRequestParam)
 // 		return
 // 	}
 

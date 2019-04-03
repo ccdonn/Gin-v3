@@ -11,6 +11,7 @@ import (
 
 	"../config"
 	"../domain"
+	ApiErr "../error"
 	"../request"
 	"../utils"
 
@@ -72,12 +73,8 @@ func FindTutorial(c *gin.Context) {
 	defer rows.Close()
 
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10003000,
-			"errorMessage": "sql error",
-		})
 		log.Println(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrSQLExec)
 		return
 	}
 
@@ -85,12 +82,8 @@ func FindTutorial(c *gin.Context) {
 	defer counts.Close()
 
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10003000,
-			"errorMessage": "sql error",
-		})
 		log.Println(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrSQLExec)
 		return
 	}
 
@@ -98,12 +91,8 @@ func FindTutorial(c *gin.Context) {
 	counts.Next()
 	err = counts.Scan(&total)
 	if err != nil {
-		c.JSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10003001,
-			"errorMessage": "scan error",
-		})
 		log.Println(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrSQLScan)
 		return
 	}
 
@@ -113,12 +102,8 @@ func FindTutorial(c *gin.Context) {
 	for rows.Next() {
 		err = rows.Scan(&id, &title, &titleImg, &content, &createTime, &del, &lastUpdateUser, &lastUpdateTime)
 		if err != nil {
-			c.JSON(500, gin.H{
-				"status":       "failure",
-				"errorCode":    10003001,
-				"errorMessage": "scan error",
-			})
 			log.Println(err)
+			c.AbortWithStatusJSON(500, ApiErr.ErrSQLScan)
 			return
 		}
 
@@ -157,15 +142,14 @@ func FindTutorial(c *gin.Context) {
 func GetTutorial(c *gin.Context) {
 	n, err := strconv.Atoi(c.Param("ID"))
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"status": "failure"})
+		log.Println(err)
+		c.AbortWithStatusJSON(400, ApiErr.ErrRequestParam)
 		return
 	}
 	t, err := getTutorial(int32(n))
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status": "failure",
-			"error":  10003111,
-		})
+		log.Println(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrNotFound)
 		return
 	}
 
@@ -227,24 +211,16 @@ func CreateTutorial(c *gin.Context) {
 	c.BindJSON(&body)
 
 	if body.Title == "" || body.TitleImg == "" || body.Content == "" {
-		c.AbortWithStatusJSON(400, gin.H{
-			"status":       "failure",
-			"errorCode":    10005000,
-			"errorMessage": "param check fail",
-		})
-		log.Println("param check fail")
+		log.Println("input error")
+		c.AbortWithStatusJSON(400, ApiErr.ErrRequestParam)
 		return
 	}
 
 	uid := utils.ExtractAgentID(c.Request.Header.Get("Authorization"))
 	_, err := FindAccount(uid)
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10005001,
-			"errorMessage": "user not found",
-		})
 		log.Println(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrNotFound)
 		return
 	}
 
@@ -265,22 +241,14 @@ func createTutorial(t *domain.Tutorial, c *gin.Context) bool {
 	insert, err := db.Prepare("insert into tutorial (" + strings.Join(tutorialDBColumn, ",") + ") " +
 		"values (null,?,?,?,now(),?,?,now()) ")
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10003000,
-			"errorMessage": "sql error",
-		})
 		log.Println(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrSQLExec)
 		return false
 	}
 
 	if _, err = insert.Exec(t.Title, t.TitleImg, t.Content, 0, t.LastUpdateUser); err != nil {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10003000,
-			"errorMessage": "sql error",
-		})
 		log.Println(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrSQLExec)
 		return false
 	}
 
@@ -291,7 +259,8 @@ func createTutorial(t *domain.Tutorial, c *gin.Context) bool {
 func UpdateTutorial(c *gin.Context) {
 	n, err := strconv.Atoi(c.Param("ID"))
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"status": "failure"})
+		log.Println(err)
+		c.AbortWithStatusJSON(400, ApiErr.ErrRequestParam)
 		return
 	}
 
@@ -299,35 +268,23 @@ func UpdateTutorial(c *gin.Context) {
 	c.BindJSON(&body)
 
 	if n == 0 || body.Title == "" || body.TitleImg == "" || body.Content == "" {
-		c.AbortWithStatusJSON(400, gin.H{
-			"status":       "failure",
-			"errorCode":    10005000,
-			"errorMessage": "param check fail",
-		})
 		log.Println("param check fail")
+		c.AbortWithStatusJSON(400, ApiErr.ErrRequestParam)
 		return
 	}
 
 	uid := utils.ExtractAgentID(c.Request.Header.Get("Authorization"))
 	_, err = FindAccount(uid)
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10005001,
-			"errorMessage": "user not found",
-		})
 		log.Println(err)
+		c.AbortWithStatusJSON(400, ApiErr.ErrNotFound)
 		return
 	}
 
 	t, err := getTutorial(int32(n))
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10003111,
-			"errorMessage": "tutorial not found",
-		})
 		log.Println(err)
+		c.AbortWithStatusJSON(400, ApiErr.ErrNotFound)
 		return
 	}
 
@@ -341,12 +298,8 @@ func UpdateTutorial(c *gin.Context) {
 			"status": "success",
 		})
 	} else {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10003000,
-			"errorMessage": "sql error",
-		})
 		log.Println(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrSQLExec)
 	}
 
 	return
@@ -374,29 +327,22 @@ func updateTutorial(t *domain.Tutorial) (bool, error) {
 func DeleteTutorial(c *gin.Context) {
 	n, err := strconv.Atoi(c.Param("ID"))
 	if err != nil {
-		c.AbortWithStatusJSON(400, gin.H{"status": "failure"})
+		log.Println(err)
+		c.AbortWithStatusJSON(400, ApiErr.ErrRequestParam)
 		return
 	}
 
 	uid := utils.ExtractAgentID(c.Request.Header.Get("Authorization"))
 	_, err = FindAccount(uid)
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10005001,
-			"errorMessage": "user not found",
-		})
 		log.Println(err)
+		c.AbortWithStatusJSON(400, ApiErr.ErrNotFound)
 		return
 	}
 
 	_, err = getTutorial(int32(n))
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10003111,
-			"errorMessage": "tutorial not found",
-		})
+		c.AbortWithStatusJSON(400, ApiErr.ErrNotFound)
 		return
 	}
 
@@ -405,12 +351,8 @@ func DeleteTutorial(c *gin.Context) {
 			"status": "success",
 		})
 	} else {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10003000,
-			"errorMessage": "sql error",
-		})
 		log.Println(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrSQLExec)
 	}
 
 	return
@@ -440,36 +382,24 @@ func SearchTutorial(c *gin.Context) {
 	client, err := elastic.NewClient(elastic.SetURL("http://192.168.1.72:9200"))
 	if err != nil {
 		log.Println(err)
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10009000,
-			"errorMessage": "connection fail",
-		})
+		c.AbortWithStatusJSON(500, ApiErr.ErrEsConn)
 		return
 	}
-	log.Println(client)
+	// log.Println(client)
 
 	exists, err := client.IndexExists("tutorial").Do(context.Background())
 	if err != nil {
 		log.Println(err)
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10009001,
-			"errorMessage": "execution fail",
-		})
+		c.AbortWithStatusJSON(500, ApiErr.ErrEsExec)
 		return
 	}
 	if !exists {
 		log.Println("index not exist")
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10009002,
-			"errorMessage": "index not exist",
-		})
+		c.AbortWithStatusJSON(500, ApiErr.ErrEsIndexNotExist)
 		return
 	}
 
-	log.Println(exists)
+	// log.Println(exists)
 
 	// get1, err := client.Get().Index("tutorial").Type("tutorial").Id("126").Do(context.Background())
 	// if err != nil {
@@ -489,8 +419,6 @@ func SearchTutorial(c *gin.Context) {
 	// var tes domain.TutorialES
 	// json.Unmarshal(*get1.Source, &tes)
 
-	log.Println("search part")
-
 	matchPhaseQuery := elastic.NewMatchPhraseQuery("title", "教程")
 	// termQuery := elastic.NewTermQuery("title", "教程")
 	searchResult, err := client.Search().
@@ -501,9 +429,9 @@ func SearchTutorial(c *gin.Context) {
 		Size(10).
 		Do(context.Background())
 	if err != nil {
-		// Handle error
 		log.Println(err)
-		// panic(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrEsExec)
+		return
 	}
 
 	// var ttyp domain.TutorialES

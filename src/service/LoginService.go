@@ -1,12 +1,12 @@
 package service
 
 import (
-	"regexp"
 	"strings"
 
 	"../config"
 	"../constant"
 	"../domain"
+	ApiErr "../error"
 	"../request"
 	"../utils"
 	"github.com/gin-gonic/gin"
@@ -18,39 +18,28 @@ func Login(c *gin.Context) {
 	c.Bind(&req)
 
 	if req.Username == "" || req.Password == "" {
-		c.JSON(400, gin.H{
-			"status":       "failure",
-			"errorCode":    123,
-			"errorMessage": "no input",
-		})
+		c.AbortWithStatusJSON(400, ApiErr.ErrRequestParam)
 		return
 	}
 
-	if ok, _ := regexp.MatchString(constant.UsernameRegex, req.Username); !ok {
-		c.JSON(400, gin.H{
-			"status":       "failure",
-			"errorCode":    123,
-			"errorMessage": "username ",
-		})
-	}
+	// do not have the varify username when login
+	// if ok, _ := regexp.MatchString(constant.UsernameRegex, req.Username); !ok {
+	// 	c.AbortWithStatusJSON(400, ApiErr.ErrRequestParam)
+	// 	return
+	// }
 
 	// fmt.Println("user input", req)
 
 	db := config.GetDBConn()
-	// defer db.Close()
 
 	rows, err := db.Query(
 		strings.Join([]string{"select ac.agent_id, ac.username, ac.password from agent ag join account ac on ag.id = ac.agent_id",
-			"where ac.username = \"" + req.Username + "\"",
-			"and ac.is_del = 0 and ag.is_del = 0 and ac.ban = 0 and ag.ban = 0"}, " "))
+			"where ac.username =?",
+			"and ac.is_del = 0 and ag.is_del = 0 and ac.ban = 0 and ag.ban = 0"}, " "), req.Username)
 	defer rows.Close()
 
 	if err != nil {
-		c.JSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10001012,
-			"errorMessage": "internal sql error",
-		})
+		c.AbortWithStatusJSON(500, ApiErr.ErrSQLExec)
 		return
 	}
 
@@ -64,11 +53,7 @@ func Login(c *gin.Context) {
 
 	rows.Next()
 	if err = rows.Scan(&agentID, &username, &password); err != nil {
-		c.JSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10001013,
-			"errorMessage": "internal scan error",
-		})
+		c.AbortWithStatusJSON(500, ApiErr.ErrSQLScan)
 		return
 	}
 
@@ -82,11 +67,8 @@ func Login(c *gin.Context) {
 
 	token, err := utils.CreateToken(account.AgentID)
 	if err != nil {
-		c.JSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10001035,
-			"errorMessage": "create token fail",
-		})
+		c.AbortWithStatusJSON(500, ApiErr.ErrTokenGen)
+		return
 	}
 
 	if utils.VerifyPassword(req.Password, account.Password) {
@@ -95,11 +77,7 @@ func Login(c *gin.Context) {
 		defer rc.Close()
 
 		if _, err := rc.Do("SETEX", account.AgentID, constant.TokenExpireTime, token); err != nil {
-			c.JSON(500, gin.H{
-				"status":       "failure",
-				"errorCode":    10001025,
-				"errorMessage": "login fail",
-			})
+			c.AbortWithStatusJSON(500, ApiErr.ErrRedisExec)
 			return
 		}
 
@@ -108,11 +86,8 @@ func Login(c *gin.Context) {
 			"result": token,
 		})
 	} else {
-		c.JSON(400, gin.H{
-			"status":       "failure",
-			"errorCode":    10001033,
-			"errorMessage": "login fail",
-		})
+		c.AbortWithStatusJSON(400, ApiErr.ErrLogin)
+		return
 	}
 
 }

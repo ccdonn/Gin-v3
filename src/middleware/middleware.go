@@ -1,12 +1,14 @@
 package middleware
 
 import (
+	"log"
 	"strconv"
 
 	"github.com/garyburd/redigo/redis"
 
 	"../config"
 	"../constant"
+	ApiErr "../error"
 	"../utils"
 	"github.com/gin-gonic/gin"
 )
@@ -16,11 +18,7 @@ func AccessTokenMiddleware(c *gin.Context) {
 	authtoken := c.Request.Header.Get("Authorization")
 
 	if authtoken == "" {
-		c.AbortWithStatusJSON(400, gin.H{
-			"status":       "failure",
-			"errorCode":    1000106,
-			"errorMessage": "miss auth token",
-		})
+		c.AbortWithStatusJSON(400, ApiErr.ErrNoToken)
 		return
 	}
 
@@ -29,30 +27,19 @@ func AccessTokenMiddleware(c *gin.Context) {
 
 	uid := utils.ExtractAgentID(authtoken)
 	if uid <= 0 {
-		c.AbortWithStatusJSON(400, gin.H{
-			"status":       "failure",
-			"errorCode":    10001048,
-			"errorMessage": "invalid token",
-		})
+		c.AbortWithStatusJSON(400, ApiErr.ErrInvalidToken)
 		return
 	}
 
 	storedToken, err := redis.String(r.Do("GET", strconv.Itoa(int(uid))))
 	if err != nil {
-		c.AbortWithStatusJSON(500, gin.H{
-			"status":       "failure",
-			"errorCode":    10001045,
-			"errorMessage": "internal server error",
-		})
+		log.Println(err)
+		c.AbortWithStatusJSON(500, ApiErr.ErrTokenExpire)
 		return
 	}
 
 	if storedToken != authtoken {
-		c.AbortWithStatusJSON(400, gin.H{
-			"status":       "failure",
-			"errorCode":    10001044,
-			"errorMessage": "Authorization fail",
-		})
+		c.AbortWithStatusJSON(400, ApiErr.ErrAuthFail)
 		return
 	}
 
