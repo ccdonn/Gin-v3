@@ -121,7 +121,7 @@ func createWechatBrand(wechatBrand *vo.WechatBrandVO) (bool, error) {
 		return false, err
 	}
 
-	if wechatBrandMaps[wechatBrand.Key] != "" {
+	if _, exist := wechatBrandMaps[wechatBrand.Key]; !exist {
 		log.Println("key already exist")
 		return false, nil // not exist
 	}
@@ -178,7 +178,7 @@ func updateWechatBrand(wechatBrand *vo.WechatBrandVO) (bool, error) {
 		return false, err
 	}
 
-	if wechatBrandMaps[wechatBrand.Key] == "" {
+	if _, exist := wechatBrandMaps[wechatBrand.Key]; !exist {
 		return false, nil
 	}
 
@@ -227,7 +227,7 @@ func deleteWechatBrand(key string) (bool, error) {
 		return false, err
 	}
 
-	if wechatBrandMaps[key] == "" {
+	if _, exist := wechatBrandMaps[key]; !exist {
 		return false, nil
 	}
 

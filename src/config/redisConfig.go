@@ -1,7 +1,7 @@
 package config
 
 import (
-	constant "../constant"
+	"../constant"
 	"github.com/garyburd/redigo/redis"
 )
 
