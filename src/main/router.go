@@ -115,7 +115,7 @@ func routers() {
 	wechat := router.Group("/wechat")
 	push.Use(middleware.AccessTokenMiddleware)
 	{
-		wechat.GET("")
+		wechat.GET("", service.GetWechat)
 		wechat.PUT("")
 		wechat.DELETE("")
 

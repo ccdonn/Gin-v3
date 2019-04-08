@@ -1,19 +1,123 @@
 package service
 
 import (
+	"encoding/json"
+	"fmt"
+	"io/ioutil"
 	"log"
+	"net/http"
 	"strings"
 	"time"
 
 	"../config"
 	"../constant"
 	ApiErr "../error"
+	"../request"
 	"../vo"
 	"github.com/gin-gonic/gin"
 )
 
 // GetWechat : get wechat account
 func GetWechat(c *gin.Context) {
+	var query request.WechatRequest
+	c.Bind(&query)
+
+	fmt.Println(query)
+
+	response, err := http.Post("http://192.168.1.72:8083/simulator/wc/getPromoteWechat", "", nil)
+	if err != nil {
+		log.Println(err)
+		c.AbortWithStatusJSON(500, gin.H{
+			"status": "failure",
+		})
+		return
+	}
+
+	data, _ := ioutil.ReadAll(response.Body)
+	var s vo.ExternalWechatMessage
+	// fmt.Println(string(data))
+	err = json.Unmarshal(data, &s)
+
+	if err != nil {
+		log.Println(err)
+		c.AbortWithStatusJSON(500, gin.H{
+			"status": "failure",
+		})
+		return
+	}
+
+	// fmt.Println(s)
+
+	if !s.Suc {
+		// log.Println()
+		c.AbortWithStatusJSON(500, gin.H{
+			"status": "failure",
+		})
+		return
+	}
+
+	all := make(map[string][]string)
+	for _, ewvo := range s.Data {
+		if ewvo.Value != "" {
+			all[ewvo.Channel] = strings.Split(ewvo.Value, "|")
+		} else {
+			all[ewvo.Channel] = []string{}
+		}
+	}
+
+	// refactoring :: could it better ?
+	r := make([]*vo.WechatVO, 1)
+	if query.BrandKey == "" {
+		if query.Wechat != "" {
+			for k, vs := range all {
+				for _, v := range vs {
+					if v == query.Wechat {
+						r[0] = &vo.WechatVO{
+							BrandKey:      k,
+							WechatAccount: vs,
+						}
+					}
+				}
+			}
+		}
+	} else if values, exist := all[query.BrandKey]; exist {
+		if query.Wechat != "" {
+			for _, v := range values {
+				if v == query.Wechat {
+					r[0] = &vo.WechatVO{
+						BrandKey:      query.BrandKey,
+						WechatAccount: values,
+					}
+				}
+			}
+		} else {
+			r[0] = &vo.WechatVO{
+				BrandKey:      query.BrandKey,
+				WechatAccount: values,
+			}
+		}
+	}
+
+	if r[0] == nil {
+		r = r[:0]
+	}
+
+	c.JSON(200, gin.H{
+		"status":    "success",
+		"timestamp": time.Now().Unix(),
+		"result":    r,
+	})
+	return
+
+}
+
+// UpdateWechat : update wechat account
+func UpdateWechat(c *gin.Context) {
+
+}
+
+// DeleteWechat : delete wechat account
+func DeleteWechat(c *gin.Context) {
 
 }
 
