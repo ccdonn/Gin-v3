@@ -24,7 +24,7 @@ func GetWechat(c *gin.Context) {
 
 	fmt.Println(query)
 
-	response, err := http.Post("http://192.168.1.72:8083/simulator/wc/getPromoteWechat", "", nil)
+	response, err := http.Post("http://"+constant.EXAPIAddress+"/simulator/wc/getPromoteWechat", "", nil)
 	if err != nil {
 		log.Println(err)
 		c.AbortWithStatusJSON(500, gin.H{
