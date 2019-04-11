@@ -9,9 +9,9 @@
 - [X] Redis
 - [ ] Elasticsearch
 - [X] File access
-- [ ] enum, const
+~~- [ ] enum, const~~
 - [ ] int64, int32, int
 - [X] Upload image(multipart)
 - [ ] Async API
 - [ ] Websocket
-- [ ] External API
+- [X] External API
